@@ -1,0 +1,1665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTT Theater | Stars of Stage</title>
+    <!-- Add Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --dark: #0A0A0A;
+            --light: #F5F5F5;
+            --shadow: 0 5px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--dark);
+            color: var(--light);
+            overflow-x: hidden;
+        }
+
+        /* ===== Loading Animation ===== */
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+        }
+
+        .curtain {
+            position: absolute;
+            top: 0;
+            width: 50%;
+            height: 100%;
+            background: var(--gold);
+            z-index: 1;
+            transition: all 1.5s cubic-bezier(0.77, 0, 0.18, 1);
+        }
+
+        .curtain.left { left: 0; }
+        .curtain.right { right: 0; }
+
+        .loader h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 4rem;
+            color: var(--light);
+            z-index: 2;
+            opacity: 0;
+            animation: fadeIn 1s ease-out 0.5s forwards;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+        }
+
+        .spotlight {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.8) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: 0;
+            animation: pulse 2s infinite alternate;
+        }
+
+        @keyframes fadeIn { to { opacity: 1; } }
+        @keyframes pulse {
+            from { transform: scale(0.8); opacity: 0.6; }
+            to { transform: scale(1.2); opacity: 1; }
+        }
+
+        /* ===== Navigation ===== */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 20px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            background: rgba(10, 10, 10, 0.9);
+            backdrop-filter: blur(10px);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--gold);
+            letter-spacing: 1px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .nav-links a {
+            color: var(--light);
+            text-decoration: none;
+            font-weight: 600;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--gold);
+            transition: width 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .nav-links a:hover::after { width: 100%; }
+
+        /* ===== Hero Section ===== */
+        .hero {
+            height: 100vh;
+            background: 
+                linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(10, 10, 10, 0.95) 100%),
+                url('https://images.unsplash.com/photo-1547153760-18fc86324498?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80') center/cover fixed;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            background: linear-gradient(to top, var(--dark), transparent);
+            z-index: 1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            max-width: 900px;
+            padding: 0 20px;
+            transform: translateY(20px);
+            opacity: 0;
+            animation: fadeInUp 1.2s cubic-bezier(0.19, 1, 0.22, 1) 0.5s forwards;
+        }
+
+        .title {
+            font-family: 'Playfair Display', serif;
+            font-size: 5.5rem;
+            color: var(--gold);
+            margin-bottom: 20px;
+            text-shadow: 0 2px 15px rgba(0, 0, 0, 0.7);
+            line-height: 1.1;
+        }
+
+        .subtitle {
+            font-size: 1.4rem;
+            letter-spacing: 3px;
+            margin-bottom: 40px;
+            font-weight: 300;
+            text-transform: uppercase;
+        }
+
+        .scroll-down {
+            width: 30px;
+            height: 50px;
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            position: relative;
+            margin: 40px auto 0;
+            animation: bounce 2s infinite;
+        }
+
+        .scroll-down::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            background: var(--gold);
+            border-radius: 50%;
+            transform: translateX(-50%);
+            animation: scroll 2s infinite;
+        }
+
+        @keyframes fadeInUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-20px); }
+            60% { transform: translateY(-10px); }
+        }
+
+        @keyframes scroll {
+            0% { opacity: 1; top: 10px; }
+            100% { opacity: 0; top: 30px; }
+        }
+
+        /* ===== Play Section ===== */
+        .play-section {
+            padding: 120px 10%;
+            display: flex;
+            align-items: center;
+            gap: 60px;
+            background: var(--dark);
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 1s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .play-poster {
+            flex: 1;
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+            transform-style: preserve-3d;
+        }
+
+        .poster-image {
+            position: relative;
+            height: 100%;
+        }
+
+        .poster-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .play-poster:hover {
+            transform: translateY(-10px) rotateX(5deg) rotateY(5deg);
+            box-shadow: 0 25px 50px rgba(212, 175, 55, 0.3);
+        }
+
+        .play-poster:hover .poster-image img {
+            transform: scale(1.05);
+        }
+
+        .play-info {
+            flex: 1;
+        }
+
+        .play-info h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.8rem;
+            color: var(--gold);
+            margin-bottom: 25px;
+            line-height: 1.2;
+        }
+
+        .play-info p {
+            font-size: 1.15rem;
+            line-height: 1.8;
+            margin-bottom: 35px;
+            color: rgba(245, 245, 245, 0.9);
+        }
+
+        .stats {
+            display: flex;
+            gap: 40px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat span {
+            font-size: 2.8rem;
+            font-weight: 700;
+            color: var(--gold);
+            display: block;
+            margin-bottom: 5px;
+            font-family: 'Playfair Display', serif;
+        }
+
+        .stat p {
+            font-size: 0.95rem;
+            color: rgba(245, 245, 245, 0.7);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* ===== Cast Section ===== */
+        .cast-section {
+            padding: 120px 10%;
+            background: #111;
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 1s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .cast-section h2 {
+            text-align: center;
+            font-family: 'Playfair Display', serif;
+            font-size: 2.8rem;
+            color: var(--gold);
+            margin-bottom: 60px;
+            position: relative;
+            display: inline-block;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .cast-section h2::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: var(--gold);
+        }
+
+        .cast-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 40px;
+        }
+
+        .actor-card {
+            background: #1A1A1A;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+            position: relative;
+        }
+
+        .actor-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            z-index: 1;
+            opacity: 0;
+            transition: all 0.4s ease;
+        }
+
+        .actor-card:hover {
+            transform: translateY(-15px) scale(1.02);
+            box-shadow: 0 25px 50px rgba(212, 175, 55, 0.4);
+        }
+
+        .actor-card:hover::before {
+            opacity: 1;
+        }
+
+        .actor-image {
+            height: 380px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .actor-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: all 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .actor-card:hover .actor-image img {
+            transform: scale(1.1);
+        }
+
+        .actor-info {
+            padding: 25px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .actor-info h3 {
+            font-size: 1.6rem;
+            margin-bottom: 8px;
+            color: var(--light);
+            font-family: 'Playfair Display', serif;
+        }
+
+        .actor-info .role {
+            color: var(--gold);
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: block;
+            font-size: 0.95rem;
+            letter-spacing: 1px;
+        }
+
+        .actor-info .bio {
+            color: rgba(245, 245, 245, 0.8);
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .social-links a {
+            color: var(--gold);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .social-links a:hover {
+            opacity: 0.7;
+        }
+
+        /* ===== News Section ===== */
+        .news-section {
+            padding: 120px 10%;
+            background: var(--dark);
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 1s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .news-section h2 {
+            text-align: center;
+            font-family: 'Playfair Display', serif;
+            font-size: 2.8rem;
+            color: var(--gold);
+            margin-bottom: 60px;
+            position: relative;
+            display: inline-block;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .news-section h2::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: var(--gold);
+        }
+
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 40px;
+        }
+
+        .news-card {
+            background: #1A1A1A;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            transition: all 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .news-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 25px 50px rgba(212, 175, 55, 0.3);
+        }
+
+        .news-image {
+            height: 250px;
+            overflow: hidden;
+        }
+
+        .news-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.8s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .news-card:hover .news-image img {
+            transform: scale(1.05);
+        }
+
+        .news-content {
+            padding: 25px;
+        }
+
+        .news-content h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: var(--light);
+            font-family: 'Playfair Display', serif;
+        }
+
+        .news-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            color: var(--gold);
+            font-size: 0.9rem;
+        }
+
+        .news-content p {
+            color: rgba(245, 245, 245, 0.8);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .read-more {
+            color: var(--gold);
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .read-more:hover {
+            opacity: 0.7;
+        }
+
+        /* ===== Contact Section ===== */
+        .contact-section {
+            padding: 120px 10%;
+            background: var(--dark);
+            text-align: center;
+            opacity: 0;
+            transform: translateY(40px);
+            transition: all 1s cubic-bezier(0.165, 0.84, 0.44, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .contact-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80') center/cover fixed;
+            opacity: 0.1;
+            z-index: 0;
+        }
+
+        .contact-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .contact-content h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.8rem;
+            color: var(--gold);
+            margin-bottom: 25px;
+        }
+
+        .contact-content p {
+            font-size: 1.15rem;
+            margin-bottom: 40px;
+            color: rgba(245, 245, 245, 0.9);
+        }
+
+        .email-button {
+            display: inline-block;
+            padding: 18px 40px;
+            background: transparent;
+            color: var(--gold);
+            border: 2px solid var(--gold);
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 50px;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .email-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: var(--gold);
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            z-index: -1;
+        }
+
+        .email-button:hover {
+            color: var(--dark);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.3);
+        }
+
+        .email-button:hover::before {
+            left: 0;
+        }
+
+        .social-media {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+        }
+
+        .social-media a {
+            color: var(--light);
+            text-decoration: none;
+            font-weight: 600;
+            position: relative;
+            font-size: 1.05rem;
+            transition: all 0.3s ease;
+        }
+
+        .social-media a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--gold);
+            transition: width 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .social-media a:hover::after {
+            width: 100%;
+        }
+
+        /* ===== Footer ===== */
+        footer {
+            padding: 30px 10%;
+            background: #000;
+            text-align: center;
+            font-size: 0.9rem;
+            color: rgba(245, 245, 245, 0.6);
+        }
+
+        /* ===== Responsive Design ===== */
+        @media (max-width: 1200px) {
+            .title { font-size: 4.5rem; }
+            .play-section { flex-direction: column; }
+            .play-poster { max-width: 600px; margin: 0 auto 50px; }
+        }
+
+        @media (max-width: 768px) {
+            .title { font-size: 3.5rem; }
+            .subtitle { font-size: 1.2rem; }
+            .nav-links { display: none; }
+            .stats { flex-direction: column; gap: 25px; }
+            .cast-grid, .news-grid { grid-template-columns: 1fr; }
+            .social-media { flex-direction: column; gap: 15px; }
+        }
+
+        @media (max-width: 480px) {
+            .title { font-size: 2.8rem; }
+            .play-info h2, .cast-section h2, .contact-content h2, .news-section h2 { font-size: 2.2rem; }
+        }
+
+        /* ===== Admin Panel ===== */
+        .admin-panel {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--gold);
+            box-shadow: 0 5px 30px rgba(0,0,0,0.5);
+            max-width: 350px;
+        }
+
+        .admin-panel h3 {
+            color: var(--gold);
+            margin-bottom: 15px;
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+        }
+
+        .admin-panel button, .admin-panel select {
+            background: var(--gold);
+            color: var(--dark);
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .admin-panel button:hover, .admin-panel select:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        .admin-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .admin-form {
+            display: none;
+            margin-top: 15px;
+        }
+
+        .admin-form input, .admin-form textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--gold);
+            color: white;
+            border-radius: 5px;
+        }
+
+        .admin-form textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Edit and Delete buttons - HIDDEN by default */
+        .edit-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: var(--gold);
+            color: var(--dark);
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 14px;
+            cursor: pointer;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #ff3e3e;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            font-size: 14px;
+            cursor: pointer;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        /* Show controls ONLY in admin mode */
+        body.admin-mode .edit-btn,
+        body.admin-mode .delete-btn {
+            display: block;
+        }
+
+        body.admin-mode .editable:hover {
+            outline: 2px dashed var(--gold);
+        }
+
+        .image-upload {
+            display: none;
+        }
+
+        /* Password Modal */
+        .password-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .password-box {
+            background: var(--dark);
+            padding: 30px;
+            border-radius: 10px;
+            border: 1px solid var(--gold);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .password-box h3 {
+            color: var(--gold);
+            margin-bottom: 20px;
+            font-family: 'Playfair Display', serif;
+        }
+
+        .password-box input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--gold);
+            color: white;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .password-box button {
+            background: var(--gold);
+            color: var(--dark);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .password-box button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        .error-message {
+            color: #ff6b6b;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div class="loader">
+        <div class="curtain left"></div>
+        <div class="curtain right"></div>
+        <div class="spotlight"></div>
+        <h1>MTT Theater</h1>
+    </div>
+
+    <!-- Password Modal (Hidden by default) -->
+    <div class="password-modal" id="passwordModal" style="display: none;">
+        <div class="password-box">
+            <h3>Enter Admin Password</h3>
+            <input type="password" id="passwordInput" placeholder="Password">
+            <p class="error-message" id="errorMessage">Incorrect password! Try again.</p>
+            <button id="submitPassword">Submit</button>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="logo">MTT</div>
+        <div class="nav-links">
+            <a href="#home">Home</a>
+            <a href="#play">Our Play</a>
+            <a href="#cast">The Cast</a>
+            <a href="#news">News</a>
+            <a href="#contact">Contact</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1 class="title editable">THE STARS OF THEATER</h1>
+            <p class="subtitle editable">Our Debut Masterpiece</p>
+            <div class="scroll-down"></div>
+        </div>
+    </section>
+
+    <!-- Play Section -->
+    <section id="play" class="play-section">
+        <div class="play-poster editable">
+            <div class="poster-image">
+                <img src="https://images.unsplash.com/photo-1547153760-18fc86324498?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80" alt="Play Poster">
+                <button class="edit-btn">✏️</button>
+                <button class="delete-btn">✕</button>
+                <input type="file" class="image-upload" accept="image/*">
+            </div>
+        </div>
+        <div class="play-info">
+            <h2 class="editable">About Us</h2>
+            <p class="editable">The Stars of Theater is a passionate French theatrical club dedicated to celebrating the magic of live performance. Founded by a diverse group of students and creatives, our mission is to bring stories to life, inspire audiences, and nurture the next generation of performers and storytellers.</p>
+            <div class="stats">
+                <div class="stat editable">
+                    <span>12</span>
+                    <p>Performances</p>
+                </div>
+                <div class="stat editable">
+                    <span>8</span>
+                    <p>Cast Members</p>
+                </div>
+                <div class="stat editable">
+                    <span>96%</span>
+                    <p>Audience Rating</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cast Section -->
+    <section id="cast" class="cast-section">
+        <h2 class="editable">Meet the Stars</h2>
+        <div class="cast-grid" id="cast-container">
+            <!-- Actors will be added dynamically from Firestore -->
+        </div>
+    </section>
+
+    <!-- News Section -->
+    <section id="news" class="news-section">
+        <h2 class="editable">Latest News</h2>
+        <div class="news-grid" id="news-container">
+            <!-- News items will be added dynamically from Firestore -->
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact-section">
+        <div class="contact-content">
+            <h2 class="editable">Join Our Journey</h2>
+            <p class="editable">For bookings, press inquiries, or to learn more about our upcoming productions:</p>
+            <a href="mailto:monlalol31@gmail.com" class="email-button editable">monlalol31@gmail.com</a>
+            <div class="social-media">
+                <a href="#" class="editable">Instagram</a>
+                <a href="#" class="editable">Facebook</a>
+                <a href="#" class="editable">YouTube</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; <span class="editable">2023 MTT Theater Company</span>. All rights reserved.</p>
+    </footer>
+
+    <!-- Admin Panel (Hidden by default) -->
+    <div class="admin-panel">
+        <h3>Admin Mode</h3>
+        <div class="admin-controls">
+            <button id="save-changes">💾 Save All</button>
+            <button id="add-actor">➕ Add Actor</button>
+            <button id="add-news">📰 Add News</button>
+            <button id="change-bg">🎨 Change BG</button>
+            <button id="exit-admin">✕ Exit</button>
+        </div>
+        
+        <div class="admin-form" id="actor-form">
+            <h4>Add New Actor</h4>
+            <input type="text" id="actor-name" placeholder="Actor Name">
+            <input type="text" id="actor-role" placeholder="Role">
+            <textarea id="actor-bio" placeholder="Biography"></textarea>
+            <input type="file" id="actor-photo" accept="image/*">
+            <button id="submit-actor">Add Actor</button>
+        </div>
+        
+        <div class="admin-form" id="news-form">
+            <h4>Add News Article</h4>
+            <input type="text" id="news-title" placeholder="Title">
+            <textarea id="news-content" placeholder="Content"></textarea>
+            <input type="text" id="news-author" placeholder="Author">
+            <input type="date" id="news-date">
+            <input type="file" id="news-image" accept="image/*">
+            <button id="submit-news">Add News</button>
+        </div>
+        
+        <div class="admin-form" id="bg-form">
+            <h4>Change Background</h4>
+            <select id="bg-select">
+                <option value="hero">Hero Section</option>
+                <option value="contact">Contact Section</option>
+            </select>
+            <input type="file" id="bg-upload" accept="image/*">
+            <button id="submit-bg">Change Background</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Firebase with your configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAs2WVRT2zvrcZJwJ3LySpGjSPgaQerma4",
+            authDomain: "mtt222.firebaseapp.com",
+            projectId: "mtt222",
+            storageBucket: "mtt222.appspot.com",
+            messagingSenderId: "215505335670",
+            appId: "1:215505335670:web:7f3bb42b5f1eb278e1b657"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Track edited elements
+        const editedElements = new Set();
+
+        // ===== Loading Animation =====
+        window.addEventListener('load', () => {
+            const loader = document.querySelector('.loader');
+            const leftCurtain = document.querySelector('.curtain.left');
+            const rightCurtain = document.querySelector('.curtain.right');
+            
+            // Open curtains
+            leftCurtain.style.width = '0';
+            rightCurtain.style.width = '0';
+            
+            // Remove loader after animation
+            setTimeout(() => {
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 500);
+            }, 1500);
+        });
+
+        // ===== Smooth Scrolling =====
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // ===== Navbar Scroll Effect =====
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 50) {
+                nav.style.padding = '15px 5%';
+                nav.style.background = 'rgba(10, 10, 10, 0.95)';
+            } else {
+                nav.style.padding = '20px 5%';
+                nav.style.background = 'rgba(10, 10, 10, 0.8)';
+            }
+        });
+
+        // ===== Scroll Animations =====
+        const animateOnScroll = () => {
+            const elements = document.querySelectorAll('.play-section, .cast-section, .news-section, .contact-section');
+            
+            elements.forEach(element => {
+                const elementTop = element.getBoundingClientRect().top;
+                const windowHeight = window.innerHeight;
+                
+                if (elementTop < windowHeight - 100) {
+                    element.style.opacity = '1';
+                    element.style.transform = 'translateY(0)';
+                }
+            });
+        };
+
+        // Initialize animations
+        document.querySelectorAll('.play-section, .cast-section, .news-section, .contact-section').forEach(element => {
+            element.style.opacity = '0';
+            element.style.transform = 'translateY(40px)';
+            element.style.transition = 'all 1s cubic-bezier(0.165, 0.84, 0.44, 1)';
+        });
+
+        window.addEventListener('scroll', animateOnScroll);
+        window.addEventListener('load', animateOnScroll);
+
+        // ===== Admin Mode Functionality =====
+        const ADMIN_PASSWORD = "1234"; // Set your password here
+        let tapCount = 0;
+        let lastTapTime = 0;
+        let adminMode = false;
+        const adminPanel = document.querySelector('.admin-panel');
+        const passwordModal = document.getElementById('passwordModal');
+        const passwordInput = document.getElementById('passwordInput');
+        const submitPassword = document.getElementById('submitPassword');
+        const errorMessage = document.getElementById('errorMessage');
+        const editableElements = document.querySelectorAll('.editable');
+        const castContainer = document.getElementById('cast-container');
+        const newsContainer = document.getElementById('news-container');
+
+        // Function to save content changes
+        async function saveContentChanges() {
+            const batch = db.batch();
+            const websiteDataRef = db.collection("websiteData");
+            
+            editedElements.forEach(elementId => {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    const content = element.tagName === 'IMG' ? element.src : element.innerHTML;
+                    batch.set(websiteDataRef.doc(elementId), {
+                        content: content,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            });
+
+            try {
+                await batch.commit();
+                editedElements.clear();
+                console.log("All changes saved successfully");
+                return true;
+            } catch (error) {
+                console.error("Error saving changes:", error);
+                return false;
+            }
+        }
+
+        // Auto-save when editing
+        function setupContentEditable() {
+            document.querySelectorAll('.editable').forEach(element => {
+                // Generate unique ID if doesn't exist
+                if (!element.id) {
+                    element.id = 'editable-' + Math.random().toString(36).substr(2, 9);
+                }
+
+                // Handle text changes
+                element.addEventListener('blur', async function() {
+                    editedElements.add(this.id);
+                    await saveContentChanges();
+                });
+
+                // Handle image changes
+                const imageUpload = element.querySelector('.image-upload');
+                if (imageUpload) {
+                    imageUpload.addEventListener('change', async function() {
+                        const file = this.files[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                                const img = this.previousElementSibling;
+                                if (img && img.tagName === 'IMG') {
+                                    img.src = e.target.result;
+                                    editedElements.add(element.id);
+                                    saveContentChanges();
+                                }
+                            };
+                            reader.readAsDataURL(file);
+                        }
+                    });
+                }
+            });
+        }
+
+        // Load saved content
+        async function loadSavedContent() {
+            try {
+                const snapshot = await db.collection("websiteData").get();
+                snapshot.forEach(doc => {
+                    const element = document.getElementById(doc.id);
+                    if (element) {
+                        if (element.tagName === 'IMG') {
+                            element.src = doc.data().content;
+                        } else {
+                            element.innerHTML = doc.data().content;
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Error loading content:", error);
+            }
+        }
+
+        // Show password modal when trying to activate admin mode
+        function showPasswordModal() {
+            passwordModal.style.display = 'flex';
+            passwordInput.focus();
+        }
+
+        // Hide password modal
+        function hidePasswordModal() {
+            passwordModal.style.display = 'none';
+            passwordInput.value = '';
+            errorMessage.style.display = 'none';
+        }
+
+        // Check password
+        submitPassword.addEventListener('click', () => {
+            if (passwordInput.value === ADMIN_PASSWORD) {
+                hidePasswordModal();
+                toggleAdminMode(true);
+            } else {
+                errorMessage.style.display = 'block';
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        });
+
+        // Allow pressing Enter to submit password
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                submitPassword.click();
+            }
+        });
+
+        // Enable admin mode by tapping 5 times
+        document.addEventListener('click', (e) => {
+            // Ignore clicks on admin panel, edit buttons, or password modal
+            if (e.target.closest('.admin-panel') || 
+                e.target.classList.contains('edit-btn') || 
+                e.target.classList.contains('delete-btn') ||
+                e.target.closest('.password-modal')) {
+                return;
+            }
+
+            const currentTime = new Date().getTime();
+            const tapInterval = currentTime - lastTapTime;
+
+            if (tapInterval < 500 && tapInterval > 0) {
+                tapCount++;
+                if (tapCount === 5) {
+                    showPasswordModal();
+                    tapCount = 0;
+                }
+            } else {
+                tapCount = 1;
+            }
+
+            lastTapTime = currentTime;
+        });
+
+        function toggleAdminMode(force = null) {
+            adminMode = force !== null ? force : !adminMode;
+            
+            // Toggle admin-mode class on body
+            if (adminMode) {
+                document.body.classList.add('admin-mode');
+                adminPanel.style.display = 'block';
+                
+                // Make all editable elements interactive
+                editableElements.forEach(el => {
+                    el.setAttribute('contenteditable', 'true');
+                    el.style.cursor = 'text';
+                });
+                
+                // Setup content editable tracking
+                setupContentEditable();
+            } else {
+                // Save any pending changes before exiting
+                saveContentChanges().then(() => {
+                    document.body.classList.remove('admin-mode');
+                    adminPanel.style.display = 'none';
+                    
+                    // Disable editing
+                    editableElements.forEach(el => {
+                        el.removeAttribute('contenteditable');
+                        el.style.cursor = 'default';
+                    });
+                    
+                    // Hide forms
+                    document.querySelectorAll('.admin-form').forEach(form => {
+                        form.style.display = 'none';
+                    });
+                });
+            }
+        }
+
+        // Add actor button
+        document.getElementById('add-actor').addEventListener('click', function() {
+            document.querySelectorAll('.admin-form').forEach(form => {
+                form.style.display = 'none';
+            });
+            document.getElementById('actor-form').style.display = 'block';
+        });
+
+        // Add news button
+        document.getElementById('add-news').addEventListener('click', function() {
+            document.querySelectorAll('.admin-form').forEach(form => {
+                form.style.display = 'none';
+            });
+            document.getElementById('news-form').style.display = 'block';
+            document.getElementById('news-date').valueAsDate = new Date();
+        });
+
+        // Change background button
+        document.getElementById('change-bg').addEventListener('click', function() {
+            document.querySelectorAll('.admin-form').forEach(form => {
+                form.style.display = 'none';
+            });
+            document.getElementById('bg-form').style.display = 'block';
+        });
+
+        // Submit new actor
+        document.getElementById('submit-actor').addEventListener('click', async function() {
+            const name = document.getElementById('actor-name').value.trim();
+            const role = document.getElementById('actor-role').value.trim();
+            const bio = document.getElementById('actor-bio').value.trim();
+            const photoFile = document.getElementById('actor-photo').files[0];
+            
+            if (!name || !role) {
+                alert('Please fill in name and role');
+                return;
+            }
+            
+            try {
+                let photoUrl = 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?ixlib=rb-1.2.1&auto=format&fit=crop&w=634&q=80'; // Default image
+                
+                if (photoFile) {
+                    photoUrl = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = (error) => reject(error);
+                        reader.readAsDataURL(photoFile);
+                    });
+                }
+
+                const actorId = Date.now().toString();
+                const actorData = {
+                    name: name,
+                    role: role,
+                    bio: bio || 'Biography coming soon',
+                    photo: photoUrl,
+                    socialLinks: {
+                        instagram: "#",
+                        twitter: "#"
+                    },
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // Save to Firestore
+                await db.collection("actors").doc(actorId).set(actorData);
+                
+                // Render the new actor
+                renderActorCard(actorId, actorData);
+                
+                // Reset form
+                document.getElementById('actor-name').value = '';
+                document.getElementById('actor-role').value = '';
+                document.getElementById('actor-bio').value = '';
+                document.getElementById('actor-photo').value = '';
+                document.getElementById('actor-form').style.display = 'none';
+                
+                alert('Actor added successfully!');
+            } catch (error) {
+                console.error("Error adding actor: ", error);
+                alert('Failed to add actor. Check console for details.');
+            }
+        });
+
+        // Submit new news article
+        document.getElementById('submit-news').addEventListener('click', async function() {
+            const title = document.getElementById('news-title').value.trim();
+            const content = document.getElementById('news-content').value.trim();
+            const author = document.getElementById('news-author').value.trim() || "MTT Theater";
+            const date = document.getElementById('news-date').value || new Date().toISOString().split('T')[0];
+            const imageFile = document.getElementById('news-image').files[0];
+            
+            if (!title || !content) {
+                alert('Please fill in title and content');
+                return;
+            }
+            
+            try {
+                let imageUrl = 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'; // Default image
+                
+                if (imageFile) {
+                    imageUrl = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = (error) => reject(error);
+                        reader.readAsDataURL(imageFile);
+                    });
+                }
+
+                const newsId = Date.now().toString();
+                const newsData = {
+                    title: title,
+                    content: content,
+                    author: author,
+                    date: date,
+                    image: imageUrl,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // Save to Firestore
+                await db.collection("news").doc(newsId).set(newsData);
+                
+                // Render the new news item
+                renderNewsCard(newsId, newsData);
+                
+                // Reset form
+                document.getElementById('news-title').value = '';
+                document.getElementById('news-content').value = '';
+                document.getElementById('news-author').value = '';
+                document.getElementById('news-date').valueAsDate = new Date();
+                document.getElementById('news-image').value = '';
+                document.getElementById('news-form').style.display = 'none';
+                
+                alert('News article added successfully!');
+            } catch (error) {
+                console.error("Error adding news: ", error);
+                alert('Failed to add news article. Check console for details.');
+            }
+        });
+
+        // Change background
+        document.getElementById('submit-bg').addEventListener('click', async function() {
+            const bgType = document.getElementById('bg-select').value;
+            const bgFile = document.getElementById('bg-upload').files[0];
+            
+            if (!bgFile) {
+                alert('Please select an image');
+                return;
+            }
+            
+            try {
+                const imageUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = (error) => reject(error);
+                    reader.readAsDataURL(bgFile);
+                });
+
+                if (bgType === 'hero') {
+                    document.querySelector('.hero').style.backgroundImage = 
+                        `linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(10, 10, 10, 0.95) 100%), url(${imageUrl})`;
+                    await db.collection("websiteData").doc("hero-bg").set({
+                        content: imageUrl,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } else if (bgType === 'contact') {
+                    const contactSection = document.querySelector('.contact-section');
+                    contactSection.style.backgroundImage = 
+                        `linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url(${imageUrl})`;
+                    await db.collection("websiteData").doc("contact-bg").set({
+                        content: imageUrl,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+                
+                // Reset form
+                document.getElementById('bg-upload').value = '';
+                document.getElementById('bg-form').style.display = 'none';
+                
+                alert('Background updated successfully!');
+            } catch (error) {
+                console.error("Error changing background: ", error);
+                alert('Failed to change background. Check console for details.');
+            }
+        });
+
+        // Save all changes
+        document.getElementById('save-changes').addEventListener('click', async function() {
+            const success = await saveContentChanges();
+            alert(success ? 'Changes saved successfully!' : 'Failed to save changes');
+        });
+
+        // Exit admin mode
+        document.getElementById('exit-admin').addEventListener('click', function() {
+            toggleAdminMode(false);
+        });
+
+        // Render actor card
+        function renderActorCard(actorId, actorData) {
+            const actorHTML = `
+                <div class="actor-card editable" data-actor-id="${actorId}" id="actor-${actorId}">
+                    <div class="actor-image">
+                        <img src="${actorData.photo}" alt="${actorData.name}">
+                        <button class="edit-btn">✏️</button>
+                        <button class="delete-btn">✕</button>
+                        <input type="file" class="image-upload" accept="image/*">
+                    </div>
+                    <div class="actor-info">
+                        <h3 class="editable">${actorData.name}</h3>
+                        <span class="role editable">${actorData.role}</span>
+                        <p class="bio editable">${actorData.bio}</p>
+                        <div class="social-links">
+                            <a href="${actorData.socialLinks.instagram}" class="editable">Instagram</a>
+                            <a href="${actorData.socialLinks.twitter}" class="editable">Twitter</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            castContainer.insertAdjacentHTML('beforeend', actorHTML);
+            bindAdminEvents();
+        }
+
+        // Render news card
+        function renderNewsCard(newsId, newsData) {
+            const newsHTML = `
+                <div class="news-card editable" data-news-id="${newsId}" id="news-${newsId}">
+                    <div class="news-image">
+                        <img src="${newsData.image}" alt="${newsData.title}">
+                        <button class="edit-btn">✏️</button>
+                        <button class="delete-btn">✕</button>
+                        <input type="file" class="image-upload" accept="image/*">
+                    </div>
+                    <div class="news-content">
+                        <h3 class="editable">${newsData.title}</h3>
+                        <div class="news-meta">
+                            <span class="editable">${newsData.author}</span>
+                            <span class="editable">${newsData.date}</span>
+                        </div>
+                        <p class="editable">${newsData.content}</p>
+                        <a href="#" class="read-more">Read More →</a>
+                    </div>
+                </div>
+            `;
+            
+            newsContainer.insertAdjacentHTML('beforeend', newsHTML);
+            bindAdminEvents();
+        }
+
+        // Delete functionality
+        function handleDelete(element) {
+            const elementId = element.id;
+            
+            if (!elementId) return;
+            
+            if (confirm('Delete this item?')) {
+                element.remove();
+                
+                // Determine collection based on ID prefix
+                let collectionName = "websiteData";
+                if (elementId.startsWith('actor-')) {
+                    collectionName = "actors";
+                } else if (elementId.startsWith('news-')) {
+                    collectionName = "news";
+                }
+                
+                const docId = elementId.replace(/^(actor|news)-/, '');
+                
+                db.collection(collectionName).doc(docId).delete()
+                    .then(() => console.log("Document successfully deleted!"))
+                    .catch((error) => console.error("Error removing document: ", error));
+            }
+        }
+
+        // Image upload functionality
+        function handleImageUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = input.previousElementSibling;
+                if (img && img.tagName === 'IMG') {
+                    img.src = e.target.result;
+                    
+                    // Save to Firestore
+                    const elementId = img.closest('.editable').id || 
+                                    'img-' + Math.random().toString(36).substr(2, 9);
+                    img.closest('.editable').id = elementId;
+                    
+                    db.collection("websiteData").doc(elementId).set({
+                        content: e.target.result,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    })
+                    .then(() => console.log("Image saved successfully"))
+                    .catch((error) => console.error("Error saving image: ", error));
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Bind events to newly added elements
+        function bindAdminEvents() {
+            // Edit buttons (image upload)
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const uploadInput = this.nextElementSibling;
+                    if (uploadInput && uploadInput.classList.contains('image-upload')) {
+                        uploadInput.click();
+                    }
+                });
+            });
+            
+            // Delete buttons
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    handleDelete(this.closest('.editable'));
+                });
+            });
+            
+            // Image uploads
+            document.querySelectorAll('.image-upload').forEach(upload => {
+                upload.addEventListener('change', function() {
+                    handleImageUpload(this);
+                });
+            });
+        }
+
+        // Load data from Firestore
+        function loadFromFirestore() {
+            // Load saved content first
+            loadSavedContent().then(() => {
+                // Load background images
+                db.collection("websiteData").doc("hero-bg").get().then((doc) => {
+                    if (doc.exists) {
+                        document.querySelector('.hero').style.backgroundImage = 
+                            `linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(10, 10, 10, 0.95) 100%), url(${doc.data().content})`;
+                    }
+                });
+                
+                db.collection("websiteData").doc("contact-bg").get().then((doc) => {
+                    if (doc.exists) {
+                        document.querySelector('.contact-section').style.backgroundImage = 
+                            `linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url(${doc.data().content})`;
+                    }
+                });
+                
+                // Load actors from Firestore
+                db.collection("actors").orderBy("timestamp", "desc").get().then((querySnapshot) => {
+                    querySnapshot.forEach((doc) => {
+                        renderActorCard(doc.id, doc.data());
+                    });
+                });
+                
+                // Load news from Firestore
+                db.collection("news").orderBy("timestamp", "desc").get().then((querySnapshot) => {
+                    querySnapshot.forEach((doc) => {
+                        renderNewsCard(doc.id, doc.data());
+                    });
+                });
+            });
+        }
+
+        // Initialize the page
+        window.addEventListener('load', () => {
+            loadFromFirestore();
+            bindAdminEvents();
+        });
+    </script>
+</body>
+</html>
